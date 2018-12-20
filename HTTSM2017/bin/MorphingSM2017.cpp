@@ -353,59 +353,72 @@ int main(int argc, char **argv) {
   if (auto_rebin) {
     for (auto b : cb.cp().bin_set()) {
       TString bstr = b;
-      if (!bstr.Contains("unrolled")) continue;
-      std::cout << "[INFO] Rebin signal bin " << b << "\n";
-      // Get shape of this category with sum of backgrounds
-      auto shape = cb.cp().bin({b}).backgrounds().GetShape();
-      // Push back last bin edge
-      vector<double> binning;
-      const auto num_bins = shape.GetNbinsX();
-      binning.push_back(shape.GetBinLowEdge(num_bins + 1));
-      // Now, go backwards through bins (from right to left) and merge a bin if
-      // the background yield is below a given threshold.
-      auto offset = shape.GetBinLowEdge(1);
-      auto width = 1.0 - offset;
-      auto c = 0.0;
-      const auto threshold = 1.0;
-      const auto tolerance = 1e-4;
-      for(auto i = num_bins; i > 0; i--) {
-        // Determine whether this is a boundary of an unrolled category
-        // if it's a multiple of the width between minimum NN score and 1.0.
-        auto low_edge = shape.GetBinLowEdge(i);
-        auto is_boundary = fabs(fmod(low_edge - offset, width)) < tolerance ? true : false;
-        if (is_boundary) { // If the lower edge is a boundary, set a bin edge.
-          if (c <= threshold && !(fabs(fmod(binning[0] - offset, width)) < tolerance)) { // Special case: If this bin is at a boundary but it is below the threshold and the bin above is not again a boundary, merge to the right.
-            binning.erase(binning.begin());
-          }
-          binning.insert(binning.begin(), low_edge);
-          c = 0.0;
-        } else { // If this is not a boundary, check whether the content is above the threshold.
-          c += shape.GetBinContent(i);
-          if (c > threshold) { // Set lower edge if the bin content is above the threshold.
-            binning.insert(binning.begin(), low_edge);
-            c = 0.0;
-          }
-        }
-      }
-      cb.cp().bin({b}).VariableRebin(binning);
-    }
-    for (auto b : cb.cp().bin_set()) {
-      TString bstr = b;
-      if (bstr.Contains("unrolled")) continue;
-      std::cout << "[INFO] Rebin background bin " << b << "\n";
       auto shape = cb.cp().bin({b}).backgrounds().GetShape();
       auto min = shape.GetBinLowEdge(1);
-      cb.cp().bin({b}).VariableRebin({min, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0});
+      auto max = shape.GetBinLowEdge(shape.GetNbinsX()+1);
+      std::cout << "[INFO] Rebin " << b << " with boundaries (" << min << ", " << max << ")\n";
+      if ( max == 1.0 ) {
+          cb.cp().bin({b}).VariableRebin({min, max});
+      }
+      else if ( min == 0.125 && max == 8.0 ) {
+          cb.cp().bin({b}).VariableRebin({
+      0.125,  0.15 ,  0.2  ,  0.25 ,  0.3  ,  0.35 ,  0.4  ,  0.45 ,  0.5  ,  0.55 ,  0.6, 0.65 ,  0.7  ,  0.75 ,  0.8  ,  0.85 ,  0.9  ,  0.95 ,  1.   ,
+      1.025,  1.075, 1.125,  1.175,  1.225,  1.275,  1.325,  1.375,  1.425,  1.475,  1.525,  1.575, 1.625,  1.675,  1.725,  1.775,  1.825,  1.875,
+      1.9  ,  1.95 ,  2.   ,  2.05 , 2.1, 2.15 ,  2.2  ,  2.25 ,  2.3  ,  2.35 ,  2.4  ,  2.45 ,  2.5  ,  2.55 ,  2.6  , 2.65, 2.7  ,  2.75 ,
+      2.775,  2.825,  2.875,  2.925,  2.975,  3.025,  3.075,  3.125, 3.175,  3.225,  3.275,  3.325,  3.375,  3.425,  3.475,  3.525,  3.575,  3.625,
+      3.65 ,  3.7  ,  3.75 ,  3.8  ,  3.85 ,  3.9  ,  3.95 ,  4.   ,  4.05 ,  4.1  , 4.15, 4.2  ,  4.25 ,  4.3  ,  4.35 ,  4.4  ,  4.45 ,  4.5 ,
+      4.525,  4.575,  4.625, 4.675,  4.725,  4.775,  4.825,  4.875,  4.925,  4.975,  5.025,  5.075,  5.125, 5.175,  5.225,  5.275,  5.325,  5.375,
+      5.4  ,  5.45 ,  5.5  ,  5.55 ,  5.6  , 5.65, 5.7  ,  5.75 ,  5.8  ,  5.85 ,  5.9  ,  5.95 ,  6.   ,  6.05 ,  6.1  ,  6.15 , 6.2, 6.25 ,
+      6.275,  6.325,  6.375,  6.425,  6.475,  6.525,  6.575,  6.625,  6.675, 6.725,  6.775,  6.825,  6.875,  6.925,  6.975,  7.025,  7.075,  7.125,
+      7.15 , 7.2, 7.25 ,  7.3  ,  7.35 ,  7.4  ,  7.45 ,  7.5  ,  7.55 ,  7.6  ,  7.65 ,  7.7  , 7.75, 7.8  ,  7.85 ,  7.9  ,  7.95 ,  8.
+                  });
+      }
+      else if ( min == 0.125 && max == 4.5 ) {
+          cb.cp().bin({b}).VariableRebin({
+      0.125,  0.15 ,  0.2  ,  0.25 ,  0.3  ,  0.35 ,  0.4  ,  0.45 ,  0.5  ,  0.55 ,  0.6, 0.65 ,  0.7  ,  0.75 ,  0.8  ,  0.85 ,  0.9  ,  0.95 ,  1.   ,
+      1.025,  1.075, 1.125,  1.175,  1.225,  1.275,  1.325,  1.375,  1.425,  1.475,  1.525,  1.575, 1.625,  1.675,  1.725,  1.775,  1.825,  1.875,
+      1.9  ,  1.95 ,  2.   ,  2.05 , 2.1, 2.15 ,  2.2  ,  2.25 ,  2.3  ,  2.35 ,  2.4  ,  2.45 ,  2.5  ,  2.55 ,  2.6  , 2.65, 2.7  ,  2.75 ,
+      2.775,  2.825,  2.875,  2.925,  2.975,  3.025,  3.075,  3.125, 3.175,  3.225,  3.275,  3.325,  3.375,  3.425,  3.475,  3.525,  3.575,  3.625,
+      3.65 ,  3.7  ,  3.75 ,  3.8  ,  3.85 ,  3.9  ,  3.95 ,  4.   ,  4.05 ,  4.1  , 4.15, 4.2  ,  4.25 ,  4.3  ,  4.35 ,  4.4  ,  4.45 ,  4.5
+                  });
+      }
+      else if ( min == 0.2 && max == 7.4 ) {
+          cb.cp().bin({b}).VariableRebin({
+     0.2 ,  0.25,  0.3 ,  0.35,  0.4 ,  0.45,  0.5 ,  0.55,  0.6 ,  0.65,  0.7 ,  0.75, 0.8  , 0.85,  0.9 ,  0.95,  1.  ,
+     1.05,  1.1 ,  1.15,  1.2 ,  1.25,  1.3 ,  1.35, 1.4 ,  1.45,  1.5 ,  1.55,  1.6 , 1.65,  1.7 ,  1.75,  1.8 ,
+     1.85,  1.9 ,  1.95, 2.  ,  2.05,  2.1 ,  2.15,  2.2 ,  2.25,  2.3 ,  2.35,  2.4 , 2.45,  2.5 ,  2.55, 2.6 ,
+     2.65,  2.7 ,  2.75,  2.8 ,  2.85,  2.9 ,  2.95,  3.  ,  3.05,  3.1 ,  3.15, 3.2 ,  3.25,  3.3 ,  3.35,  3.4 ,
+     3.45,  3.5 ,  3.55,  3.6 ,  3.65,  3.7 ,  3.75, 3.8 ,  3.85,  3.9 ,  3.95,  4.  ,  4.05,  4.1 ,  4.15,  4.2 ,
+     4.25,  4.3 ,  4.35, 4.4 ,  4.45,  4.5 ,  4.55,  4.6 ,  4.65,  4.7 ,  4.75,  4.8 ,  4.85,  4.9 ,  4.95, 5.  ,
+     5.05,  5.1 ,  5.15,  5.2 ,  5.25,  5.3 ,  5.35,  5.4 ,  5.45,  5.5 ,  5.55, 5.6 ,  5.65,  5.7 ,  5.75,  5.8 ,
+     5.85,  5.9 ,  5.95,  6.  ,  6.05,  6.1 ,  6.15, 6.2 ,  6.25,  6.3 ,  6.35,  6.4 ,  6.45,  6.5 ,  6.55,  6.6 ,
+     6.65,  6.7 ,  6.75, 6.8 ,  6.85,  6.9 ,  6.95,  7.  ,  7.05,  7.1 ,  7.15,  7.2 ,  7.25,  7.3 ,  7.35, 7.4
+                  });
+      }
+      else if ( min == 0.2 && max == 4.2 ) {
+          cb.cp().bin({b}).VariableRebin({
+      0.2 ,  0.25,  0.3 ,  0.35,  0.4 ,  0.45,  0.5 ,  0.55,  0.6 ,  0.65,  0.7 ,  0.75, 0.8 ,  0.85,  0.9 ,  0.95,  1.  ,
+      1.05,  1.1 ,  1.15,  1.2 ,  1.25,  1.3 ,  1.35, 1.4 ,  1.45,  1.5 ,  1.55,  1.6 ,  1.65,  1.7 ,  1.75,  1.8 ,
+      1.85,  1.9 ,  1.95, 2.  ,  2.05,  2.1 ,  2.15,  2.2 ,  2.25,  2.3 ,  2.35,  2.4 ,  2.45,  2.5 ,  2.55, 2.6 ,
+      2.65,  2.7 ,  2.75,  2.8 ,  2.85,  2.9 ,  2.95,  3.  ,  3.05,  3.1 ,  3.15, 3.2 ,  3.25,  3.3 ,  3.35,  3.4 ,
+      3.45,  3.5 ,  3.55,  3.6 ,  3.65,  3.7 ,  3.75, 3.8 ,  3.85,  3.9 ,  3.95,  4.  ,  4.05,  4.1 ,  4.15,  4.2
+                  });
+      }
+      else {
+          throw std::runtime_error("[ERROR] Given configuration is not valid for rebinning.");
+      }
     }
   }
 
   // Merge bins and set bin-by-bin uncertainties
+  /*
   auto bbb = ch::BinByBinFactory()
                  .SetAddThreshold(0.00)
                  .SetMergeThreshold(0.5)
                  .SetFixNorm(false);
   bbb.MergeBinErrors(cb.cp().backgrounds());
   bbb.AddBinByBin(cb.cp().backgrounds(), cb);
+  */
 
   // This function modifies every entry to have a standardised bin name of
   // the form: {analysis}_{channel}_{bin_id}_{era}
