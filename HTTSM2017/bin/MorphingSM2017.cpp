@@ -13,6 +13,7 @@
 #include "RooWorkspace.h"
 #include "TF1.h"
 #include "TH2.h"
+#include "TString.h"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/program_options.hpp"
@@ -351,7 +352,9 @@ int main(int argc, char **argv) {
   // Perform auto-rebinning
   if (auto_rebin) {
     for (auto b : cb.cp().bin_set()) {
-      std::cout << "[INFO] Rebin bin " << b << "\n";
+      TString bstr = b;
+      if (!bstr.Contains("unrolled")) continue;
+      std::cout << "[INFO] Rebin signal bin " << b << "\n";
       // Get shape of this category with sum of backgrounds
       auto shape = cb.cp().bin({b}).backgrounds().GetShape();
       // Push back last bin edge
@@ -386,11 +389,19 @@ int main(int argc, char **argv) {
       }
       cb.cp().bin({b}).VariableRebin(binning);
     }
+    for (auto b : cb.cp().bin_set()) {
+      TString bstr = b;
+      if (bstr.Contains("unrolled")) continue;
+      std::cout << "[INFO] Rebin background bin " << b << "\n";
+      auto shape = cb.cp().bin({b}).backgrounds().GetShape();
+      auto min = shape.GetBinLowEdge(1);
+      cb.cp().bin({b}).VariableRebin({min, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0});
+    }
   }
 
   // Merge bins and set bin-by-bin uncertainties
   auto bbb = ch::BinByBinFactory()
-                 .SetAddThreshold(0.05)
+                 .SetAddThreshold(0.00)
                  .SetMergeThreshold(0.5)
                  .SetFixNorm(false);
   bbb.MergeBinErrors(cb.cp().backgrounds());
