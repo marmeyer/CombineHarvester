@@ -288,6 +288,107 @@ int main(int argc, char **argv) {
         "$BIN/$PROCESS$MASS", "$BIN/$PROCESS$MASS_$SYSTEMATIC");
   }
 
+  //partial blinding of unrolled categories
+
+  // 0Jet: 1
+  // 1Jet: 2-5
+  // 2Jet: 6-9
+  std::vector<int> blind_ggh = {2,3,4,5};
+
+  //VBFTOPO_JET3VETO: 1
+  //VBFTOPO_JET3:     2
+  //REST:             3
+  //PTJET1_GT200:     4
+  //VH2JET:           5
+  std::vector<int> blind_qqh = {};
+
+  for (auto b : cb.cp().bin_set()) {
+    TString bstr = b;
+    if (bstr.Contains("ggh_unrolled")) {
+        cb.cp().bin({b}).ForEachProc([&blind_ggh](ch::Process *p) {
+            auto newhist = p->ClonedShape();
+            int bins_per_subclass = newhist->GetNbinsX() / 9;
+            for (int i : blind_ggh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist->SetBinContent(j, 0.0);
+                    newhist->SetBinError(j, 0.0);
+                }
+            }
+            p->set_rate(p->no_norm_rate()*newhist->Integral());
+            p->set_shape(std::move(newhist), false);
+        });
+        cb.cp().bin({b}).ForEachObs([&blind_ggh](ch::Observation *p) {
+            auto newhist = p->ClonedShape();
+            int bins_per_subclass = newhist->GetNbinsX() / 9;
+            for (int i : blind_ggh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist->SetBinContent(j, 0.0);
+                    newhist->SetBinError(j, 0.0);
+                }
+            }
+            p->set_rate(p->rate()*newhist->Integral());
+            p->set_shape(std::move(newhist), false);
+        });
+        cb.cp().bin({b}).ForEachSyst([&blind_ggh](ch::Systematic *s) {
+            if (s->type().find("shape") == std::string::npos)
+                return;
+            auto newhist_u = s->ClonedShapeU();
+            int bins_per_subclass = newhist_u->GetNbinsX() / 9;
+            auto newhist_d = s->ClonedShapeD();
+            for (int i : blind_ggh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist_u->SetBinContent(j, 0.0);
+                    newhist_u->SetBinError(j, 0.0);
+                    newhist_d->SetBinContent(j, 0.0);
+                    newhist_d->SetBinError(j, 0.0);
+                }
+            }
+            s->set_shapes(std::move(newhist_u), std::move(newhist_d), nullptr);
+        });
+    } else if (bstr.Contains("qqh_unrolled")) {
+        cb.cp().bin({b}).ForEachProc([&blind_qqh](ch::Process *p) {
+            auto newhist = p->ClonedShape();
+            int bins_per_subclass = newhist->GetNbinsX() / 5;
+            for (int i : blind_qqh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist->SetBinContent(j, 0.0);
+                    newhist->SetBinError(j, 0.0);
+                }
+            }
+            p->set_rate(p->no_norm_rate()*newhist->Integral());
+            p->set_shape(std::move(newhist), false);
+        });
+        cb.cp().bin({b}).ForEachObs([&blind_qqh](ch::Observation *p) {
+            auto newhist = p->ClonedShape();
+            int bins_per_subclass = newhist->GetNbinsX() / 5;
+            for (int i : blind_qqh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist->SetBinContent(j, 0.0);
+                    newhist->SetBinError(j, 0.0);
+                }
+            }
+            p->set_rate(p->rate()*newhist->Integral());
+            p->set_shape(std::move(newhist), false);
+        });
+        cb.cp().bin({b}).ForEachSyst([&blind_qqh](ch::Systematic *s) {
+            if (s->type().find("shape") == std::string::npos)
+                return;
+            auto newhist_u = s->ClonedShapeU();
+            int bins_per_subclass = newhist_u->GetNbinsX() / 5;
+            auto newhist_d = s->ClonedShapeD();
+            for (int i : blind_qqh){
+                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
+                    newhist_u->SetBinContent(j, 0.0);
+                    newhist_u->SetBinError(j, 0.0);
+                    newhist_d->SetBinContent(j, 0.0);
+                    newhist_d->SetBinError(j, 0.0);
+                }
+            }
+            s->set_shapes(std::move(newhist_u), std::move(newhist_d), nullptr);
+        });
+    }
+  }
+
   // Delete processes with 0 yield
   cb.FilterProcs([&](ch::Process *p) {
     bool null_yield = !(p->rate() > 0.0);
@@ -366,103 +467,6 @@ int main(int argc, char **argv) {
                            cb.cp().bin({b}).signals().GetShape(),
                        true);
       });
-    }
-  }
-
-  //partial blinding of unrolled categories
-
-  // 0Jet: 1
-  // 1Jet: 2-5
-  // 2Jet: 6-9
-  std::vector<int> blind_ggh = {6,7,8,9};
-
-  //VBFTOPO_JET3VETO: 1
-  //VBFTOPO_JET3:     2
-  //REST:             3
-  //PTJET1_GT200:     4
-  //VH2JET:           5
-  std::vector<int> blind_qqh = {2,3,4,5};
-
-  for (auto b : cb.cp().bin_set()) {
-    TString bstr = b;
-    if (bstr.Contains("ggh_unrolled")) {
-        cb.cp().bin({b}).ForEachProc([&blind_ggh](ch::Process *p) {
-            auto newhist = p->ClonedShape();
-            int bins_per_subclass = newhist->GetNbinsX() / 9;
-            for (int i : blind_ggh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist->SetBinContent(j, 0.0);
-                    newhist->SetBinError(j, 0.0);
-                }
-            }
-            p->set_shape(std::move(newhist), false);
-        });
-        cb.cp().bin({b}).ForEachObs([&blind_ggh](ch::Observation *p) {
-            auto newhist = p->ClonedShape();
-            int bins_per_subclass = newhist->GetNbinsX() / 9;
-            for (int i : blind_ggh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist->SetBinContent(j, 0.0);
-                    newhist->SetBinError(j, 0.0);
-                }
-            }
-            p->set_shape(std::move(newhist), false);
-        });
-        cb.cp().bin({b}).ForEachSyst([&blind_ggh](ch::Systematic *s) {
-            if (s->type().find("shape") == std::string::npos)
-                return;
-            auto newhist_u = s->ClonedShapeU();
-            int bins_per_subclass = newhist_u->GetNbinsX() / 9;
-            auto newhist_d = s->ClonedShapeD();
-            for (int i : blind_ggh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist_u->SetBinContent(j, 0.0);
-                    newhist_u->SetBinError(j, 0.0);
-                    newhist_d->SetBinContent(j, 0.0);
-                    newhist_d->SetBinError(j, 0.0);
-                }
-            }
-            s->set_shapes(std::move(newhist_u), std::move(newhist_d), nullptr);
-        });
-    } else if (bstr.Contains("qqh_unrolled")) {
-        cb.cp().bin({b}).ForEachProc([&blind_qqh](ch::Process *p) {
-            auto newhist = p->ClonedShape();
-            int bins_per_subclass = newhist->GetNbinsX() / 5;
-            for (int i : blind_qqh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist->SetBinContent(j, 0.0);
-                    newhist->SetBinError(j, 0.0);
-                }
-            }
-            p->set_shape(std::move(newhist), false);
-        });
-        cb.cp().bin({b}).ForEachObs([&blind_qqh](ch::Observation *p) {
-            auto newhist = p->ClonedShape();
-            int bins_per_subclass = newhist->GetNbinsX() / 5;
-            for (int i : blind_qqh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist->SetBinContent(j, 0.0);
-                    newhist->SetBinError(j, 0.0);
-                }
-            }
-            p->set_shape(std::move(newhist), false);
-        });
-        cb.cp().bin({b}).ForEachSyst([&blind_qqh](ch::Systematic *s) {
-            if (s->type().find("shape") == std::string::npos)
-                return;
-            auto newhist_u = s->ClonedShapeU();
-            int bins_per_subclass = newhist_u->GetNbinsX() / 5;
-            auto newhist_d = s->ClonedShapeD();
-            for (int i : blind_qqh){
-                for(int j = (i-1)*bins_per_subclass+1; j <= i*bins_per_subclass; j++){
-                    newhist_u->SetBinContent(j, 0.0);
-                    newhist_u->SetBinError(j, 0.0);
-                    newhist_d->SetBinContent(j, 0.0);
-                    newhist_d->SetBinError(j, 0.0);
-                }
-            }
-            s->set_shapes(std::move(newhist_u), std::move(newhist_d), nullptr);
-        });
     }
   }
 
